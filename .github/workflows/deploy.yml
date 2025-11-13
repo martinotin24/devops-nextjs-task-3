@@ -1,0 +1,60 @@
+name: Build and Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  
+  IMAGE_NAME: martinotin24/devops-nextjs-task-3
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ env.IMAGE_NAME }}:latest
+
+  deploy-to-ec2:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            # Login en el registro de GitHub dentro del servidor
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            # Parar el contenedor viejo si existe
+            docker stop nextjs-app || true
+            docker rm nextjs-app || true
+            
+            # Descargar la nueva imagen
+            docker pull ghcr.io/${{ env.IMAGE_NAME }}:latest
+            
+            # Correr la app en el puerto 3000
+            docker run -d -p 3000:3000 --name nextjs-app ghcr.io/${{ env.IMAGE_NAME }}:latest
