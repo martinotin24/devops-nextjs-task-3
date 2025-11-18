@@ -43,11 +43,11 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_KEY }}
           script: |
-            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker stop nextjs-app || true
-            docker rm nextjs-app || true
-            docker pull ghcr.io/${{ env.IMAGE_NAME }}:latest
-            docker run -d -p 3000:3000 --name nextjs-app ghcr.io/${{ env.IMAGE_NAME }}:latest
+            echo ${{ secrets.GITHUB_TOKEN }} | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            sudo docker stop nextjs-app || true
+            sudo docker rm nextjs-app || true
+            sudo docker pull ghcr.io/${{ env.IMAGE_NAME }}:latest
+            sudo docker run -d -p 3000:3000 --name nextjs-app ghcr.io/${{ env.IMAGE_NAME }}:latest
 
       - name: Notify Lambda on Success
         if: ${{ success() }}
