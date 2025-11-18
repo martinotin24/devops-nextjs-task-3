@@ -46,15 +46,41 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_KEY }}
           script: |
-            # Login en el registro de GitHub dentro del servidor
+            
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
-            # Parar el contenedor viejo si existe
+            
             docker stop nextjs-app || true
             docker rm nextjs-app || true
             
-            # Descargar la nueva imagen
+            
             docker pull ghcr.io/${{ env.IMAGE_NAME }}:latest
             
-            # Correr la app en el puerto 3000
+            
             docker run -d -p 3000:3000 --name nextjs-app ghcr.io/${{ env.IMAGE_NAME }}:latest
+
+  - name: Notify Lambda on Success
+        if: ${{ success() }}
+        run: |
+          curl -X POST "${{ secrets.LAMBDA_URL }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+                "status": "success",
+                "repository": "${{ github.repository }}",
+                "branch": "${{ github.ref_name }}",
+                "commit_id": "${{ github.sha }}",
+                "timestamp": "$(date -u +''%Y-%m-%dT%H:%M:%SZ'')"
+              }'
+
+      - name: Notify Lambda on Failure
+        if: ${{ failure() }}
+        run: |
+          curl -X POST "${{ secrets.LAMBDA_URL }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+                "status": "failure",
+                "repository": "${{ github.repository }}",
+                "branch": "${{ github.ref_name }}",
+                "commit_id": "${{ github.sha }}",
+                "timestamp": "$(date -u +''%Y-%m-%dT%H:%M:%SZ'')"
+              }'
