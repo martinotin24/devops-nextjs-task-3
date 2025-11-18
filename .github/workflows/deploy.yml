@@ -6,7 +6,6 @@ on:
       - main
 
 env:
-  
   IMAGE_NAME: martinotin24/devops-nextjs-task-3
 
 jobs:
@@ -15,7 +14,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -37,7 +35,6 @@ jobs:
   deploy-to-ec2:
     needs: build-and-push
     runs-on: ubuntu-latest
-
     steps:
       - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@master
@@ -46,20 +43,13 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_KEY }}
           script: |
-            
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
-            
             docker stop nextjs-app || true
             docker rm nextjs-app || true
-            
-            
             docker pull ghcr.io/${{ env.IMAGE_NAME }}:latest
-            
-            
             docker run -d -p 3000:3000 --name nextjs-app ghcr.io/${{ env.IMAGE_NAME }}:latest
 
-  - name: Notify Lambda on Success
+      - name: Notify Lambda on Success
         if: ${{ success() }}
         run: |
           curl -X POST "${{ secrets.LAMBDA_URL }}" \
